@@ -1,18 +1,34 @@
 import { Request, Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
-import { Task, CreateTaskDTO, UpdateTaskDTO } from '../models/task.model';
+import { Task, TaskStatus, CreateTaskDTO, UpdateTaskDTO } from '../models/task.model';
 
 // In-memory store — replace with a database in production
 const tasks: Task[] = [];
 
+// Valid task status values for query validation
+const VALID_STATUSES: TaskStatus[] = ['pending', 'in_progress', 'completed'];
+
 /**
  * GET /tasks
  * Returns all tasks. Supports optional ?status= filter.
+ * Responds with 400 if an invalid status value is provided.
+ *
+ * Examples:
+ *   GET /tasks                      → all tasks
+ *   GET /tasks?status=pending       → only pending tasks
+ *   GET /tasks?status=in_progress   → only in-progress tasks
+ *   GET /tasks?status=completed     → only completed tasks
  */
 export const getAllTasks = (req: Request, res: Response): void => {
   const { status } = req.query;
 
-  if (status) {
+  if (status !== undefined) {
+    if (!VALID_STATUSES.includes(status as TaskStatus)) {
+      res.status(400).json({
+        error: `Invalid status value: "${status}". Must be one of: ${VALID_STATUSES.join(', ')}`,
+      });
+      return;
+    }
     const filtered = tasks.filter((t) => t.status === status);
     res.json(filtered);
     return;
